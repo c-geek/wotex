@@ -87,7 +87,7 @@ const stack = duniter.statics.autoStack([{
                     lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites));
                   } else {
                     if (idty.uid != sentry.uid) {
-                      lignes.push([idty.uid, '?', sentry.uid]);
+                      lignes.push([idty.uid, '?', '?', '?', sentry.uid]);
                     }
                   }
                 }
@@ -117,8 +117,6 @@ const stack = duniter.statics.autoStack([{
                   <td>${colonnes[3] || ''}</td>
                   <td>${colonnes[4] ? '<-' : ''}</td>
                   <td>${colonnes[4] || ''}</td>
-                  <td>${colonnes[5] ? '<-' : ''}</td>
-                  <td>${colonnes[5] || ''}</td>
                 </tr>
               `;
               }).join('');
@@ -134,9 +132,7 @@ const stack = duniter.statics.autoStack([{
                   <th class="arrow"><-</th>
                   <th>Step 3</th>
                   <th class="arrow"><-</th>
-                  <th>Step 4</th>
-                  <th class="arrow"><-</th>
-                  <th>Step 5</th>
+                  <th>Infinity</th>
                 </tr>
                 ${chemins}
               </table>
