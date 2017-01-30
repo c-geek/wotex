@@ -339,7 +339,7 @@ const stack = duniter.statics.autoStack([{
             // Générons un contenu de page à afficher
             let sentriesHTML = sentries
                 .map((sentry) => `
-            <div class="sentry">${sentry.uid}</div>
+            <div class="sentry isSentry"><a href="./?to=${sentry.uid}">${sentry.uid}</a></div>
           `)
           .join('');
             let contenu = `
@@ -454,6 +454,7 @@ const stack = duniter.statics.autoStack([{
                   <input type="submit"/>
                 </div>
               </form>
+              <hr/>
               ${searchResult}
               <h2>Current sentries:</h2>
               ${sentriesHTML}
