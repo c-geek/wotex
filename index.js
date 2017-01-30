@@ -67,9 +67,13 @@ const stack = duniter.statics.autoStack([{
             } else {
               dSen = Math.ceil(Math.pow(membersCount, 1 / duniterServer.conf.stepMax));
             }
+            const dicoIdentites = {};
             const pointsDeControle = wotb.getSentries(dSen);
             const sentries = yield pointsDeControle.map((wotb_id) => co(function*() {
-              return (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+              const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+              identite.isSentry = true;
+              dicoIdentites[identite.wotb_id] = identite;
+              return identite;
             }));
 
             let searchResult = '';
@@ -80,15 +84,33 @@ const stack = duniter.statics.autoStack([{
               <p>UID or public key « ${req.query.to} » is not a member and cannot be found in the WoT.</p>
             `;
               } else {
+
                 // Ajout des membres non-sentries
                 const pointsNormaux = wotb.getNonSentries(dSen);
                 const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
-                  return (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+                  const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+                  identite.isSentry = false;
+                  dicoIdentites[identite.wotb_id] = identite;
+                  return identite;
                 }));
-                const membres = sentries.concat(nonSentries);
+
+                let membres = sentries.concat(nonSentries);
 
                 const mapPendingCerts = {};
+                const mapPendingIdties = {};
                 if (req.query.pending) {
+                  // Recherche les identités en attente
+                  const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
+                  for (const idty of pendingIdties) {
+                    // Add it to the temp wot
+                    idty.wotb_id = wotb.addNode();
+                    idty.isSentry = false;
+                    dicoIdentites[idty.wotb_id] = idty;
+                    mapPendingIdties[idty.wotb_id] = idty;
+                  }
+
+                  membres = membres.concat(Object.values(mapPendingIdties));
+
                   // Recherche les certifications en attente
                   const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
                   for (const cert of pendingCerts) {
@@ -101,7 +123,6 @@ const stack = duniter.statics.autoStack([{
                   }
                 }
 
-                const dicoIdentites = yield donneDictionnaireIdentites(duniterServer, sentries);
                 let lignes = [];
                 for (const membre of membres) {
                   const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, duniterServer.conf.stepMax);
@@ -238,6 +259,7 @@ const stack = duniter.statics.autoStack([{
             </body>
           </html>
         `;
+            wotb.clear();
             // Envoyons la réponse
             res.status(200).send(contenu);
           } catch (e) {
@@ -261,18 +283,6 @@ const stack = duniter.statics.autoStack([{
     }
   }
 }]);
-
-function donneDictionnaireIdentites(duniterServer, sentries) {
-  return co(function*() {
-    const dico = {};
-    const identites = yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE op = ?', ['CREATE']);
-    for (const identite of identites) {
-      identite.isSentry = _.findWhere(sentries, { wotb_id: identite.wotb_id });
-      dico[identite.wotb_id] = identite;
-    }
-    return dico;
-  });
-}
 
 function traduitCheminEnIdentites(chemins, dicoIdentites, mapPendingCerts) {
   const cheminsTries = chemins.sort((cheminA, cheminB) => {
