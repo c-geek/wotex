@@ -1,5 +1,6 @@
 "use strict";
 
+const _ = require('underscore');
 const co = require('co');
 const duniter = require('duniter');
 const http      = require('http');
@@ -57,6 +58,7 @@ const stack = duniter.statics.autoStack([{
 
           try {
             // Trouve les points de contrôle efficacement grâce au module C (nommé "wotb")
+            const wotb = duniterServer.dal.wotb.memcopy();
             const head = yield duniterServer.dal.getCurrentBlockOrNull();
             const membersCount = head ? head.membersCount : 0;
             let dSen;
@@ -65,7 +67,7 @@ const stack = duniter.statics.autoStack([{
             } else {
               dSen = Math.ceil(Math.pow(membersCount, 1 / duniterServer.conf.stepMax));
             }
-            const pointsDeControle = duniterServer.dal.wotb.getSentries(dSen);
+            const pointsDeControle = wotb.getSentries(dSen);
             const sentries = yield pointsDeControle.map((wotb_id) => co(function*() {
               return (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
             }));
@@ -78,16 +80,23 @@ const stack = duniter.statics.autoStack([{
               <p>UID or public key « ${req.query.to} » is not a member and cannot be found in the WoT.</p>
             `;
               } else {
+                // Ajout des membres non-sentries
+                const pointsNormaux = wotb.getNonSentries(dSen);
+                const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
+                  return (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+                }));
+                const membres = sentries.concat(nonSentries);
 
-                const dicoIdentites = yield donneDictionnaireIdentites(duniterServer);
+                const dicoIdentites = yield donneDictionnaireIdentites(duniterServer, sentries);
                 let lignes = [];
-                for (const sentry of sentries) {
-                  const plusCourtsCheminsPossibles = duniterServer.dal.wotb.getPaths(sentry.wotb_id, idty.wotb_id, duniterServer.conf.stepMax);
+                for (const membre of membres) {
+                  const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, duniterServer.conf.stepMax);
                   if (plusCourtsCheminsPossibles.length) {
                     lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites));
                   } else {
-                    if (idty.uid != sentry.uid) {
-                      lignes.push([idty.uid, '?', '?', '?', sentry.uid]);
+                    const identiteObservee = dicoIdentites[idty.wotb_id];
+                    if (identiteObservee.uid != membre.uid) {
+                      lignes.push([identiteObservee, { uid: '?' }, { uid: '?' }, { uid: '?' }, membre]);
                     }
                   }
                 }
@@ -108,15 +117,15 @@ const stack = duniter.statics.autoStack([{
                 const chemins = lignes.map((colonnes) => {
                     return `
                 <tr>
-                  <td>${colonnes[0] || ''}</td>
-                  <td>${colonnes[1] ? '<-' : ''}</td>
-                  <td>${colonnes[1] || ''}</td>
-                  <td>${colonnes[2] ? '<-' : ''}</td>
-                  <td>${colonnes[2] || ''}</td>
-                  <td>${colonnes[3] ? '<-' : ''}</td>
-                  <td>${colonnes[3] || ''}</td>
-                  <td>${colonnes[4] ? '<-' : ''}</td>
-                  <td>${colonnes[4] || ''}</td>
+                  <td class="${ colonnes[0] && colonnes[0].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
+                  <td class="${ colonnes[1] && colonnes[1].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[1] && colonnes[1].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[1] && colonnes[1].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
+                  <td class="${ colonnes[2] && colonnes[2].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[2] && colonnes[2].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[2] && colonnes[2].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
+                  <td class="${ colonnes[3] && colonnes[3].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[3] && colonnes[3].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[3] && colonnes[3].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
+                  <td class="${ colonnes[4] && colonnes[4].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[4] && colonnes[4].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[4] && colonnes[4].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
                 </tr>
               `;
               }).join('');
@@ -162,6 +171,10 @@ const stack = duniter.statics.autoStack([{
                 .arrow {
                   width: 50px;
                 }
+                td.isSentry {
+                  color: blue;
+                  font-weight: bold;
+                }
                 td {
                   text-align: center;
                 }
@@ -205,11 +218,12 @@ const stack = duniter.statics.autoStack([{
   }
 }]);
 
-function donneDictionnaireIdentites(duniterServer) {
+function donneDictionnaireIdentites(duniterServer, sentries) {
   return co(function*() {
     const dico = {};
-    const identites = yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id IS NOT NULL');
+    const identites = yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE op = ?', ['CREATE']);
     for (const identite of identites) {
+      identite.isSentry = _.findWhere(sentries, { wotb_id: identite.wotb_id });
       dico[identite.wotb_id] = identite;
     }
     return dico;
@@ -219,16 +233,16 @@ function donneDictionnaireIdentites(duniterServer) {
 function traduitCheminEnIdentites(chemins, dicoIdentites) {
   const cheminsTries = chemins.sort((cheminA, cheminB) => {
       if (cheminA.length < cheminB.length) {
-    return -1;
-  }
-  if (cheminA.length > cheminB.length) {
-    return 1;
-  }
-  return 0;
-});
+      return -1;
+    }
+    if (cheminA.length > cheminB.length) {
+      return 1;
+    }
+    return 0;
+  });
   if (cheminsTries[0]) {
     const inverse = cheminsTries[0].slice().reverse();
-    return inverse.map((wotb_id) => dicoIdentites[wotb_id].uid);
+    return inverse.map((wotb_id) => dicoIdentites[wotb_id]);
   } else {
     return [];
   }
