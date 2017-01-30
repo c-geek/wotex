@@ -146,7 +146,13 @@ const stack = duniter.statics.autoStack([{
                     } else {
                       const identiteObservee = dicoIdentites[idty.wotb_id];
                       if (identiteObservee.uid != membre.uid) {
-                        lignes.push([identiteObservee, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, membre]);
+                        lignes.push([identiteObservee,
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          membre]);
                       }
                     }
                   }
@@ -167,19 +173,19 @@ const stack = duniter.statics.autoStack([{
                   const chemins = lignes.map((colonnes) => {
                     return `
                       <tr>
-                        <td class="${ colonnes[0] && colonnes[0].statusClass }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
+                        <td class="${ colonnes[0] && colonnes[0].statusClass }"><a href="./?to=${ (colonnes[0] && colonnes[0].uid) || ''}">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
                         <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[1] && colonnes[1].statusClass }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].statusClass }"><a href="./?to=${ (colonnes[1] && colonnes[1].uid) || ''}">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
                         <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[2] && colonnes[2].statusClass }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].statusClass }"><a href="./?to=${ (colonnes[2] && colonnes[2].uid) || ''}">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
                         <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[3] && colonnes[3].statusClass }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].statusClass }"><a href="./?to=${ (colonnes[3] && colonnes[3].uid) || ''}">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
                         <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[4] && colonnes[4].statusClass }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].statusClass }"><a href="./?to=${ (colonnes[4] && colonnes[4].uid) || ''}">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
                         <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[5] && colonnes[5].statusClass }">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
                         <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[6] && colonnes[6].statusClass }">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
+                        <td class="${ colonnes[6] && colonnes[6].statusClass }"><a href="./?to=${ (colonnes[6] && colonnes[6].uid) || ''}">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
                       </tr>
                     `;
                   }).join('');
@@ -262,7 +268,13 @@ const stack = duniter.statics.autoStack([{
                     } else {
                       const identiteObservee = dicoIdentites[idty.wotb_id];
                       if (identiteObservee.uid != membre.uid) {
-                        lignes.push([membre, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, identiteObservee]);
+                        lignes.push([membre,
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          { uid: '?', statusClass: 'isPending', pendingCert: true },
+                          identiteObservee]);
                       }
                     }
                   }
@@ -283,19 +295,19 @@ const stack = duniter.statics.autoStack([{
                   const chemins = lignes.map((colonnes) => {
                     return `
                       <tr>
-                        <td class="${ colonnes[0] && colonnes[0].statusClass }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
+                        <td class="${ colonnes[0] && colonnes[0].statusClass }"><a href="./?to=${ (colonnes[0] && colonnes[0].uid) || ''}">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
                         <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[1] && colonnes[1].statusClass }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].statusClass }"><a href="./?to=${ (colonnes[1] && colonnes[1].uid) || ''}">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
                         <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[2] && colonnes[2].statusClass }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].statusClass }"><a href="./?to=${ (colonnes[2] && colonnes[2].uid) || ''}">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
                         <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[3] && colonnes[3].statusClass }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].statusClass }"><a href="./?to=${ (colonnes[3] && colonnes[3].uid) || ''}">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
                         <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[4] && colonnes[4].statusClass }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].statusClass }"><a href="./?to=${ (colonnes[4] && colonnes[4].uid) || ''}">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
                         <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[5] && colonnes[5].statusClass }">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
                         <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[6] && colonnes[6].statusClass }">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
+                        <td class="${ colonnes[6] && colonnes[6].statusClass }"><a href="./?to=${ (colonnes[6] && colonnes[6].uid) || ''}">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
                       </tr>
                     `;
                   }).join('');
@@ -346,17 +358,39 @@ const stack = duniter.statics.autoStack([{
                 .arrow {
                   width: 50px;
                 }
-                td.isSentry {
+                .isSentry, .isSentry a {
+                  text-decoration: none;
                   color: blue;
                 }
-                td.isPending {
+                .isSentry, .isSentry a:visited {
+                  text-decoration: none;
+                  color: blue;
+                }
+                .isPending, .isPending a {
+                  text-decoration: none;
+                  color: orange !important;
+                  font-weight: bold;
+                }
+                .isMember, .isMember a {
+                  text-decoration: none;
+                  color: black !important;
+                }
+                .isPendingCert, .isPendingCert a {
+                  text-decoration: none;
                   color: orange;
                   font-weight: bold;
                 }
-                td.isMember {
-                  color: black;
+                .isPending, .isPending a:visited {
+                  text-decoration: none;
+                  color: orange !important;
+                  font-weight: bold;
                 }
-                td.isPendingCert {
+                .isMember, .isMember a:visited {
+                  text-decoration: none;
+                  color: black !important;
+                }
+                .isPendingCert, .isPendingCert a:visited {
+                  text-decoration: none;
                   color: orange;
                   font-weight: bold;
                 }
@@ -377,6 +411,16 @@ const stack = duniter.statics.autoStack([{
                     document.getElementById('modeu2w').checked = 'checked';
                   } else {
                     document.getElementById('modew2u').checked = 'checked';
+                  }
+                  
+                  var params = [
+                    "pending=" + (pending == 'checked' ? 'on' : ''),
+                    "mode=" + mode
+                  ];
+                  
+                  var links = document.getElementsByTagName('a');
+                  for (var i = 0; i < links.length; i++) {
+                    links[i].href += '&' + params.join('&');                    
                   }
                 }
                 
