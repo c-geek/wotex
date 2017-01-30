@@ -228,11 +228,16 @@ const stack = duniter.statics.autoStack([{
                         }
                     }
                 }
+                
+                function resetAll() {
+                  window.location = '/';
+                  return false;
+                }
               </script>
             </head>
             <body onload="onLoadedPage()">
               <h1>wotb explorer</h1>
-              <form method="GET" action="/">
+              <form method="GET" action="/" onreset="resetAll()">
                 <div>
                   <label for="to">Test UID:</label>
                   <input type="text" name="to" id="to">
@@ -244,6 +249,7 @@ const stack = duniter.statics.autoStack([{
                   <input type="radio" name="mode" id="modeu2w" value="u2w">See the distance of WoT from User's point of view</div>
                   <br>
                   <input type="submit"/>
+                  <input type="reset" value="Reset"/>
                 </div>
               </form>
               <hr/>
