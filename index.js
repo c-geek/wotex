@@ -19,6 +19,8 @@ const DEFAULT_HOST = 'localhost';
 // Default port on which WoT UI is available
 const DEFAULT_PORT = 8558;
 
+const MAX_STEP_LOOK = 4;
+
 /****************************************
  * SPECIALIZATION
  ***************************************/
@@ -59,6 +61,7 @@ const stack = duniter.statics.autoStack([{
           try {
             // Trouve les points de contrôle efficacement grâce au module C (nommé "wotb")
             const wotb = duniterServer.dal.wotb.memcopy();
+            wotb.setMaxCert(100);
             const head = yield duniterServer.dal.getCurrentBlockOrNull();
             const membersCount = head ? head.membersCount : 0;
             let dSen;
@@ -71,7 +74,7 @@ const stack = duniter.statics.autoStack([{
             const pointsDeControle = wotb.getSentries(dSen);
             const sentries = yield pointsDeControle.map((wotb_id) => co(function*() {
               const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
-              identite.isSentry = true;
+              identite.statusClass = 'isSentry';
               dicoIdentites[identite.wotb_id] = identite;
               return identite;
             }));
@@ -85,102 +88,216 @@ const stack = duniter.statics.autoStack([{
             `;
               } else {
 
-                // Ajout des membres non-sentries
-                const pointsNormaux = wotb.getNonSentries(dSen);
-                const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
-                  const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
-                  identite.isSentry = false;
-                  dicoIdentites[identite.wotb_id] = identite;
-                  return identite;
-                }));
+                if (req.query.mode == "u2w") {
 
-                let membres = sentries.concat(nonSentries);
+                  // Ajout des membres non-sentries
+                  const pointsNormaux = wotb.getNonSentries(dSen);
+                  const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
+                    const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+                    identite.statusClass = 'isMember';
+                    dicoIdentites[identite.wotb_id] = identite;
+                    return identite;
+                  }));
 
-                const mapPendingCerts = {};
-                const mapPendingIdties = {};
-                if (req.query.pending) {
-                  // Recherche les identités en attente
-                  const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
-                  for (const idty of pendingIdties) {
-                    // Add it to the temp wot
-                    idty.wotb_id = wotb.addNode();
-                    idty.isSentry = false;
-                    dicoIdentites[idty.wotb_id] = idty;
-                    mapPendingIdties[idty.wotb_id] = idty;
-                  }
+                  let membres = sentries.concat(nonSentries);
 
-                  membres = membres.concat(Object.values(mapPendingIdties));
+                  const mapPendingCerts = {};
+                  const mapPendingIdties = {};
+                  if (req.query.pending) {
+                    // Recherche les identités en attente
+                    const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
+                    for (const idty of pendingIdties) {
+                      // Add it to the temp wot
+                      idty.wotb_id = wotb.addNode();
+                      console.log('%s is affected wid %s', idty.uid, idty.wotb_id);
+                      idty.statusClass = 'isPending';
+                      idty.pub = idty.pubkey;
+                      dicoIdentites[idty.wotb_id] = idty;
+                      mapPendingIdties[idty.wotb_id] = idty;
+                    }
 
-                  // Recherche les certifications en attente
-                  const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
-                  for (const cert of pendingCerts) {
-                    const from = _.findWhere(membres, { pub: cert.from });
-                    const target = _.findWhere(membres, { hash: cert.target });
-                    if (target && from) {
-                      wotb.addLink(from.wotb_id, target.wotb_id);
-                      mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
+                    membres = membres.concat(Object.values(mapPendingIdties));
+
+                    // Recherche les certifications en attente
+                    const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
+                    for (const cert of pendingCerts) {
+                      const from = _.findWhere(membres, { pub: cert.from });
+                      const target = _.findWhere(membres, { hash: cert.target });
+                      if (target && from) {
+                        wotb.addLink(from.wotb_id, target.wotb_id);
+                        mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
+                      }
                     }
                   }
-                }
 
-                let lignes = [];
-                for (const membre of membres) {
-                  const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, duniterServer.conf.stepMax);
-                  if (plusCourtsCheminsPossibles.length) {
-                    lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites, mapPendingCerts));
-                  } else {
-                    const identiteObservee = dicoIdentites[idty.wotb_id];
-                    if (identiteObservee.uid != membre.uid) {
-                      lignes.push([identiteObservee, { uid: '?' }, { uid: '?' }, { uid: '?' }, membre]);
+                  let lignes = [];
+                  for (const membre of membres) {
+                    const plusCourtsCheminsPossibles = wotb.getPaths(idty.wotb_id, membre.wotb_id, MAX_STEP_LOOK);
+                    if (plusCourtsCheminsPossibles.length) {
+                      lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites, mapPendingCerts));
+                    } else {
+                      const identiteObservee = dicoIdentites[idty.wotb_id];
+                      if (identiteObservee.uid != membre.uid) {
+                        lignes.push([membre, { uid: '?' }, { uid: '?' }, { uid: '?' }, identiteObservee]);
+                      }
                     }
                   }
-                }
 
-                lignes.sort((ligneA, ligneB) => {
-                  if (ligneA.length > ligneB.length) return -1;
-                if (ligneB.length > ligneA.length) return 1;
-                if ((ligneA[1] && ligneA[1] == '?') && (!ligneB[1] || ligneB[1] != '?')) {
-                  return 1;
-                }
-                if ((ligneB[1] && ligneB[1] == '?') && (!ligneA[1] || ligneA[1] != '?')) {
-                  return -1;
-                }
-                return 0;
-              });
-                lignes.reverse();
+                  wotb.showWoT();
 
-                const chemins = lignes.map((colonnes) => {
+                  lignes.sort((ligneA, ligneB) => {
+                    if (ligneA.length > ligneB.length) return -1;
+                    if (ligneB.length > ligneA.length) return 1;
+                    if ((ligneA[1] && ligneA[1] == '?') && (!ligneB[1] || ligneB[1] != '?')) {
+                      return 1;
+                    }
+                    if ((ligneB[1] && ligneB[1] == '?') && (!ligneA[1] || ligneA[1] != '?')) {
+                      return -1;
+                    }
+                    return 0;
+                  });
+                  lignes.reverse();
+
+                  const chemins = lignes.map((colonnes) => {
                     return `
-                <tr>
-                  <td class="${ colonnes[0] && colonnes[0].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
-                  <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '<-' : ''}</td>
-                  <td class="${ colonnes[1] && colonnes[1].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
-                  <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '<-' : ''}</td>
-                  <td class="${ colonnes[2] && colonnes[2].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
-                  <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '<-' : ''}</td>
-                  <td class="${ colonnes[3] && colonnes[3].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
-                  <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '<-' : ''}</td>
-                  <td class="${ colonnes[4] && colonnes[4].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
-                </tr>
-              `;
-              }).join('');
+                      <tr>
+                        <td class="${ colonnes[0] && colonnes[0].statusClass }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].statusClass }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].statusClass }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].statusClass }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].statusClass }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].statusClass }">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+                      </tr>
+                    `;
+                  }).join('');
 
-                searchResult = `
-              <table>
-                <tr>
-                  <th>Step 0</th>
-                  <th class="arrow"><-</th>
-                  <th>Step 1</th>
-                  <th class="arrow"><-</th>
-                  <th>Step 2</th>
-                  <th class="arrow"><-</th>
-                  <th>Step 3</th>
-                  <th class="arrow"><-</th>
-                  <th>Infinity</th>
-                </tr>
-                ${chemins}
-              </table>
-            `;
+                  searchResult = `
+                    <table>
+                      <tr>
+                        <th>Step 0</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 1</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 2</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 3</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 4</th>
+                        <th class="arrow"><-</th>
+                        <th>Infinity</th>
+                      </tr>
+                      ${chemins}
+                    </table>
+                  `;
+
+                } else {
+
+                  // Ajout des membres non-sentries
+                  const pointsNormaux = wotb.getNonSentries(dSen);
+                  const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
+                    const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+                    identite.statusClass = 'isMember';
+                    dicoIdentites[identite.wotb_id] = identite;
+                    return identite;
+                  }));
+
+                  let membres = sentries.concat(nonSentries);
+
+                  const mapPendingCerts = {};
+                  const mapPendingIdties = {};
+                  if (req.query.pending) {
+                    // Recherche les identités en attente
+                    const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
+                    for (const idty of pendingIdties) {
+                      // Add it to the temp wot
+                      idty.wotb_id = wotb.addNode();
+                      idty.statusClass = 'isPending';
+                      dicoIdentites[idty.wotb_id] = idty;
+                      mapPendingIdties[idty.wotb_id] = idty;
+                    }
+
+                    membres = membres.concat(Object.values(mapPendingIdties));
+
+                    // Recherche les certifications en attente
+                    const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
+                    for (const cert of pendingCerts) {
+                      const from = _.findWhere(membres, { pub: cert.from });
+                      const target = _.findWhere(membres, { hash: cert.target });
+                      if (target && from) {
+                        wotb.addLink(from.wotb_id, target.wotb_id);
+                        mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
+                      }
+                    }
+                  }
+
+                  let lignes = [];
+                  for (const membre of membres) {
+                    const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, MAX_STEP_LOOK);
+                    if (plusCourtsCheminsPossibles.length) {
+                      lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites, mapPendingCerts));
+                    } else {
+                      const identiteObservee = dicoIdentites[idty.wotb_id];
+                      if (identiteObservee.uid != membre.uid) {
+                        lignes.push([identiteObservee, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, membre]);
+                      }
+                    }
+                  }
+
+                  lignes.sort((ligneA, ligneB) => {
+                    if (ligneA.length > ligneB.length) return -1;
+                    if (ligneB.length > ligneA.length) return 1;
+                    if ((ligneA[1] && ligneA[1] == '?') && (!ligneB[1] || ligneB[1] != '?')) {
+                      return 1;
+                    }
+                    if ((ligneB[1] && ligneB[1] == '?') && (!ligneA[1] || ligneA[1] != '?')) {
+                      return -1;
+                    }
+                    return 0;
+                  });
+                  lignes.reverse();
+
+                  const chemins = lignes.map((colonnes) => {
+                    return `
+                      <tr>
+                        <td class="${ colonnes[0] && colonnes[0].statusClass }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].statusClass }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].statusClass }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].statusClass }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].statusClass }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '<-' : ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].statusClass }">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+                      </tr>
+                    `;
+                  }).join('');
+
+                  searchResult = `
+                    <table>
+                      <tr>
+                        <th>Step 0</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 1</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 2</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 3</th>
+                        <th class="arrow"><-</th>
+                        <th>Step 4</th>
+                        <th class="arrow"><-</th>
+                        <th>Infinity</th>
+                      </tr>
+                      ${chemins}
+                    </table>
+                  `;
+                }
               }
             }
 
@@ -208,7 +325,13 @@ const stack = duniter.statics.autoStack([{
                 }
                 td.isSentry {
                   color: blue;
+                }
+                td.isPending {
+                  color: orange;
                   font-weight: bold;
+                }
+                td.isMember {
+                  color: black;
                 }
                 td.isPendingCert {
                   color: orange;
@@ -223,9 +346,15 @@ const stack = duniter.statics.autoStack([{
                 function onLoadedPage() {
                   var to = querySt("to");
                   var pending = querySt("pending") == 'on' ? 'checked' : '';
+                  var mode = querySt("mode");
                   
-                  document.getElementById('to').value = to;
+                  document.getElementById('to').value = to || '';
                   document.getElementById('pending').checked = pending;
+                  if (mode == "u2w") {
+                    document.getElementById('modeu2w').checked = 'checked';
+                  } else {
+                    document.getElementById('modew2u').checked = 'checked';
+                  }
                 }
                 
                 function querySt(ji) {
@@ -248,8 +377,13 @@ const stack = duniter.statics.autoStack([{
                 <div>
                   <label for="to">Test UID:</label>
                   <input type="text" name="to" id="to">
-                  <label for="pending">Include sandbox's data</label>
+                  <br>
                   <input type="checkbox" name="pending" id="pending">
+                  <label for="pending">Include sandbox's data</label>
+                  <br>
+                  <input type="radio" name="mode" id="modew2u" value="w2u" checked="checked">See distance from WoT to User</div>
+                  <input type="radio" name="mode" id="modeu2w" value="u2w">See distance from User to WoT</div>
+                  <br>
                   <input type="submit"/>
                 </div>
               </form>
