@@ -206,7 +206,7 @@ const stack = duniter.statics.autoStack([{
                   }
                   
                   var params = [
-                    "pending=" + (pending == 'checked' ? 'on' : ''),
+                    "pending=" + (pending == 'checked' ? 'on' : (!window.location.search ? 'on' : '')),
                     "mode=" + mode
                   ];
                   
@@ -373,9 +373,8 @@ function prepareMembres(req, wotb, duniterServer, membres, idty, dicoIdentites) 
           mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
         }
       }
-
-      return { idty, membres, mapPendingCerts };
     }
+    return { idty, membres, mapPendingCerts };
   });
 }
 
