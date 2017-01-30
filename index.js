@@ -19,7 +19,7 @@ const DEFAULT_HOST = 'localhost';
 // Default port on which WoT UI is available
 const DEFAULT_PORT = 8558;
 
-const MAX_STEP_LOOK = 4;
+const MAX_STEP_LOOK = 5;
 
 /****************************************
  * SPECIALIZATION
@@ -134,22 +134,19 @@ const stack = duniter.statics.autoStack([{
                     const plusCourtsCheminsPossibles = wotb.getPaths(idty.wotb_id, membre.wotb_id, MAX_STEP_LOOK);
                     if (plusCourtsCheminsPossibles.length) {
                       const ligne = traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites);
-                      ligne.reverse();
-                      for (let i = 0; i < ligne.length; i++) {
-                        if (i < ligne.length - 1) {
-                          const from_wid = ligne[i].wotb_id;
-                          const to_wid = ligne[i + 1].wotb_id;
-                          const lien = [from_wid, to_wid].join('-');
-                          if (mapPendingCerts[lien]) {
-                            ligne[i + 1].pendingCert = true;
-                          }
+                      for (let i = 0; i < ligne.length - 1; i++) {
+                        const from_wid = ligne[i].wotb_id;
+                        const to_wid = ligne[i + 1].wotb_id;
+                        const lien = [from_wid, to_wid].join('-');
+                        if (mapPendingCerts[lien]) {
+                          ligne[i + 1].pendingCert = true;
                         }
                       }
                       lignes.push(ligne);
                     } else {
                       const identiteObservee = dicoIdentites[idty.wotb_id];
                       if (identiteObservee.uid != membre.uid) {
-                        lignes.push([identiteObservee, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, membre]);
+                        lignes.push([identiteObservee, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, membre]);
                       }
                     }
                   }
@@ -181,6 +178,8 @@ const stack = duniter.statics.autoStack([{
                         <td class="${ colonnes[4] && colonnes[4].statusClass }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
                         <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
                         <td class="${ colonnes[5] && colonnes[5].statusClass }">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+                        <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[6] && colonnes[6].statusClass }">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
                       </tr>
                     `;
                   }).join('');
@@ -197,7 +196,9 @@ const stack = duniter.statics.autoStack([{
                         <th>Step 3 (MAX)</th>
                         <th class="arrow">-></th>
                         <th>Step 4</th>
-                        <th class="arrow"><-</th>
+                        <th class="arrow">-></th>
+                        <th>Step 5</th>
+                        <th class="arrow">-></th>
                         <th>Infinity</th>
                       </tr>
                       ${chemins}
@@ -249,20 +250,19 @@ const stack = duniter.statics.autoStack([{
                     const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, MAX_STEP_LOOK);
                     if (plusCourtsCheminsPossibles.length) {
                       const ligne = traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites, mapPendingCerts);
-                      ligne.reverse();
                       for (let i = 0; i < ligne.length - 1; i++) {
                         const from_wid = ligne[i].wotb_id;
                         const to_wid = ligne[i + 1].wotb_id;
                         const lien = [from_wid, to_wid].join('-');
                         if (mapPendingCerts[lien]) {
-                          ligne[i].pendingCert = true;
+                          ligne[i + 1].pendingCert = true;
                         }
                       }
                       lignes.push(ligne);
                     } else {
                       const identiteObservee = dicoIdentites[idty.wotb_id];
                       if (identiteObservee.uid != membre.uid) {
-                        lignes.push([membre, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, identiteObservee]);
+                        lignes.push([membre, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, { uid: '?' }, identiteObservee]);
                       }
                     }
                   }
@@ -284,16 +284,18 @@ const stack = duniter.statics.autoStack([{
                     return `
                       <tr>
                         <td class="${ colonnes[0] && colonnes[0].statusClass }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
-                        <td class="${ colonnes[1] && colonnes[0].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
                         <td class="${ colonnes[1] && colonnes[1].statusClass }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
-                        <td class="${ colonnes[2] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
                         <td class="${ colonnes[2] && colonnes[2].statusClass }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
-                        <td class="${ colonnes[3] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
                         <td class="${ colonnes[3] && colonnes[3].statusClass }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
-                        <td class="${ colonnes[4] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
                         <td class="${ colonnes[4] && colonnes[4].statusClass }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
-                        <td class="${ colonnes[5] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
                         <td class="${ colonnes[5] && colonnes[5].statusClass }">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+                        <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
+                        <td class="${ colonnes[6] && colonnes[6].statusClass }">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
                       </tr>
                     `;
                   }).join('');
@@ -310,7 +312,9 @@ const stack = duniter.statics.autoStack([{
                         <th>Step 3 (MAX)</th>
                         <th class="arrow">-></th>
                         <th>Step 4</th>
-                        <th class="arrow"><-</th>
+                        <th class="arrow">-></th>
+                        <th>Step 5</th>
+                        <th class="arrow">-></th>
                         <th>Infinity</th>
                       </tr>
                       ${chemins}
@@ -400,8 +404,8 @@ const stack = duniter.statics.autoStack([{
                   <input type="checkbox" name="pending" id="pending">
                   <label for="pending">Include sandbox's data</label>
                   <br>
-                  <input type="radio" name="mode" id="modew2u" value="w2u" checked="checked">See distance from WoT to User</div>
-                  <input type="radio" name="mode" id="modeu2w" value="u2w">See distance from User to WoT</div>
+                  <input type="radio" name="mode" id="modew2u" value="w2u" checked="checked">See the distance of User from WoT's point of view</div>
+                  <input type="radio" name="mode" id="modeu2w" value="u2w">See the distance of WoT from User's point of view</div>
                   <br>
                   <input type="submit"/>
                 </div>
@@ -448,8 +452,14 @@ function traduitCheminEnIdentites(chemins, dicoIdentites) {
     return 0;
   });
   if (cheminsTries[0]) {
-    const inverse = cheminsTries[0].slice().reverse();
-    return inverse.map((wotb_id) => dicoIdentites[wotb_id]);
+    return cheminsTries[0].slice().map((wotb_id) => {
+      return {
+        uid: dicoIdentites[wotb_id].uid,
+        pub: dicoIdentites[wotb_id].pub,
+        wotb_id: wotb_id,
+        statusClass: dicoIdentites[wotb_id].statusClass
+      };
+    });
   } else {
     return [];
   }
