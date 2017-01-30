@@ -87,12 +87,26 @@ const stack = duniter.statics.autoStack([{
                 }));
                 const membres = sentries.concat(nonSentries);
 
+                const mapPendingCerts = {};
+                if (req.query.pending) {
+                  // Recherche les certifications en attente
+                  const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
+                  for (const cert of pendingCerts) {
+                    const from = _.findWhere(membres, { pub: cert.from });
+                    const target = _.findWhere(membres, { hash: cert.target });
+                    if (target && from) {
+                      wotb.addLink(from.wotb_id, target.wotb_id);
+                      mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
+                    }
+                  }
+                }
+
                 const dicoIdentites = yield donneDictionnaireIdentites(duniterServer, sentries);
                 let lignes = [];
                 for (const membre of membres) {
                   const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, duniterServer.conf.stepMax);
                   if (plusCourtsCheminsPossibles.length) {
-                    lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites));
+                    lignes.push(traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites, mapPendingCerts));
                   } else {
                     const identiteObservee = dicoIdentites[idty.wotb_id];
                     if (identiteObservee.uid != membre.uid) {
@@ -118,13 +132,13 @@ const stack = duniter.statics.autoStack([{
                     return `
                 <tr>
                   <td class="${ colonnes[0] && colonnes[0].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
-                  <td class="${ colonnes[1] && colonnes[1].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[1] && colonnes[1].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '<-' : ''}</td>
                   <td class="${ colonnes[1] && colonnes[1].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
-                  <td class="${ colonnes[2] && colonnes[2].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[2] && colonnes[2].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '<-' : ''}</td>
                   <td class="${ colonnes[2] && colonnes[2].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
-                  <td class="${ colonnes[3] && colonnes[3].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[3] && colonnes[3].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '<-' : ''}</td>
                   <td class="${ colonnes[3] && colonnes[3].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
-                  <td class="${ colonnes[4] && colonnes[4].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[4] && colonnes[4].uid) ? '<-' : ''}</td>
+                  <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '<-' : ''}</td>
                   <td class="${ colonnes[4] && colonnes[4].isSentry ? 'isSentry' : 'isMember' }">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
                 </tr>
               `;
@@ -175,17 +189,47 @@ const stack = duniter.statics.autoStack([{
                   color: blue;
                   font-weight: bold;
                 }
+                td.isPendingCert {
+                  color: orange;
+                  font-weight: bold;
+                }
                 td {
                   text-align: center;
                 }
               </style>
+              <script type="text/javascript">
+              
+                function onLoadedPage() {
+                  var to = querySt("to");
+                  var pending = querySt("pending") == 'on' ? 'checked' : '';
+                  
+                  document.getElementById('to').value = to;
+                  document.getElementById('pending').checked = pending;
+                }
+                
+                function querySt(ji) {
+  
+                    var hu = window.location.search.substring(1);
+                    var gy = hu.split("&");
+                
+                    for (i=0;i<gy.length;i++) {
+                        ft = gy[i].split("=");
+                        if (ft[0] == ji) {
+                            return ft[1];
+                        }
+                    }
+                }
+              </script>
             </head>
-            <body>
+            <body onload="onLoadedPage()">
               <h1>wotb explorer</h1>
               <form method="GET" action="/">
                 <div>
                   <label for="to">Test UID:</label>
                   <input type="text" name="to" id="to">
+                  <label for="pending">Include sandbox's data</label>
+                  <input type="checkbox" name="pending" id="pending">
+                  <input type="submit"/>
                 </div>
               </form>
               ${searchResult}
@@ -230,7 +274,7 @@ function donneDictionnaireIdentites(duniterServer, sentries) {
   });
 }
 
-function traduitCheminEnIdentites(chemins, dicoIdentites) {
+function traduitCheminEnIdentites(chemins, dicoIdentites, mapPendingCerts) {
   const cheminsTries = chemins.sort((cheminA, cheminB) => {
       if (cheminA.length < cheminB.length) {
       return -1;
@@ -242,7 +286,18 @@ function traduitCheminEnIdentites(chemins, dicoIdentites) {
   });
   if (cheminsTries[0]) {
     const inverse = cheminsTries[0].slice().reverse();
-    return inverse.map((wotb_id) => dicoIdentites[wotb_id]);
+    return inverse.map((wotb_id, index) => {
+      const obj = dicoIdentites[wotb_id];
+      if (index > 0) {
+        const to_wid = inverse[index - 1];
+        const from_wid = inverse[index];
+        const lien = [from_wid, to_wid].join('-');
+        if (mapPendingCerts[lien]) {
+          obj.pendingCert = true;
+        }
+      }
+      return obj;
+    });
   } else {
     return [];
   }
