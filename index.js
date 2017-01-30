@@ -247,6 +247,13 @@ const stack = duniter.statics.autoStack([{
                 </div>
               </form>
               <hr/>
+              <p>Legend:</p>
+              <ul>
+                <li><span class="isMember">Black: Member</span></li>
+                <li><span class="isSentry">Blue: Sentry (= Member + point of control)</span></li>
+                <li><span class="isPending">Orange: Pending certification/identity</span></li>
+              </ul>
+              <hr/>
               ${searchResult}
               <h2>Current sentries:</h2>
               ${sentriesHTML}
