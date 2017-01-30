@@ -81,11 +81,26 @@ const stack = duniter.statics.autoStack([{
 
             let searchResult = '';
             if (req.query.to) {
-              const idty = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wasMember AND (uid = ? or pub = ?)', [req.query.to, req.query.to]))[0];
+              let idty;
+              let pos = 0, search = req.query.to;
+              if (req.query.to.match(/(\[|\])/)) {
+                const match = req.query.to.match(/^(.+)(\[\d+\])!?$/);
+                search = match[1];
+                pos = parseInt(match[2].replace(/(\[|\])/g, ''));
+              }
+              let idties = yield duniterServer.dal.idtyDAL.query('' +
+                'SELECT uid, pub, wotb_id FROM i_index WHERE (uid = ? or pub = ?) ' +
+                'UNION ALL ' +
+                'SELECT uid, pubkey as pub, (SELECT NULL) AS wotb_id FROM idty WHERE (uid = ? or pubkey = ?)', [search, search, search, search]);
+              idty = idties[pos];
               if (!idty) {
                 searchResult = `
-              <p>UID or public key « ${req.query.to} » is not a member and cannot be found in the WoT.</p>
-            `;
+                  <p>UID or public key « ${req.query.to} » is not known in the WoT nor in the sandboxes.</p>
+                `;
+              } else if (!req.query.pending && idty.wotb_id === null) {
+                searchResult = `
+                  <p>UID or public key « ${req.query.to} » requires the "Include sandbox's data" option to be enabled.</p>
+                `;
               } else {
 
                 if (req.query.mode == "u2w") {
@@ -103,16 +118,31 @@ const stack = duniter.statics.autoStack([{
 
                   const mapPendingCerts = {};
                   const mapPendingIdties = {};
+                  const mapSiblings = {};
                   if (req.query.pending) {
                     // Recherche les identités en attente
                     const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
-                    for (const idty of pendingIdties) {
+                    for (const theIdty of pendingIdties) {
                       // Add it to the temp wot
-                      idty.wotb_id = wotb.addNode();
-                      idty.statusClass = 'isPending';
-                      idty.pub = idty.pubkey;
-                      dicoIdentites[idty.wotb_id] = idty;
-                      mapPendingIdties[idty.wotb_id] = idty;
+                      theIdty.wotb_id = wotb.addNode();
+                      theIdty.statusClass = 'isPending';
+                      theIdty.pub = theIdty.pubkey;
+                      const siblings = _.where(pendingIdties, { uid: theIdty.uid });
+                      if (siblings.length > 1 || mapSiblings[theIdty.uid] !== undefined) {
+                        const initialUID = theIdty.uid;
+                        mapSiblings[initialUID] = (mapSiblings[initialUID] || 0);
+                        theIdty.uid += "[" + mapSiblings[initialUID] + "]";
+                        if (theIdty.uid == req.query.to) {
+                          idty = theIdty;
+                        }
+                        mapSiblings[initialUID]++;
+                      } else {
+                        if (theIdty.uid == req.query.to) {
+                          idty = theIdty;
+                        }
+                      }
+                      dicoIdentites[theIdty.wotb_id] = theIdty;
+                      mapPendingIdties[theIdty.wotb_id] = theIdty;
                     }
 
                     membres = membres.concat(Object.values(mapPendingIdties));
@@ -226,15 +256,31 @@ const stack = duniter.statics.autoStack([{
 
                   const mapPendingCerts = {};
                   const mapPendingIdties = {};
+                  const mapSiblings = {};
                   if (req.query.pending) {
                     // Recherche les identités en attente
                     const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
-                    for (const idty of pendingIdties) {
+                    for (const theIdty of pendingIdties) {
                       // Add it to the temp wot
-                      idty.wotb_id = wotb.addNode();
-                      idty.statusClass = 'isPending';
-                      dicoIdentites[idty.wotb_id] = idty;
-                      mapPendingIdties[idty.wotb_id] = idty;
+                      theIdty.wotb_id = wotb.addNode();
+                      theIdty.statusClass = 'isPending';
+                      theIdty.pub = theIdty.pubkey;
+                      const siblings = _.where(pendingIdties, { uid: theIdty.uid });
+                      if (siblings.length > 1 || mapSiblings[theIdty.uid] !== undefined) {
+                        const initialUID = theIdty.uid;
+                        mapSiblings[initialUID] = (mapSiblings[initialUID] || 0);
+                        theIdty.uid += "[" + mapSiblings[initialUID] + "]";
+                        if (theIdty.uid == req.query.to) {
+                          idty = theIdty;
+                        }
+                        mapSiblings[initialUID]++;
+                      } else {
+                        if (theIdty.uid == req.query.to) {
+                          idty = theIdty;
+                        }
+                      }
+                      dicoIdentites[theIdty.wotb_id] = theIdty;
+                      mapPendingIdties[theIdty.wotb_id] = theIdty;
                     }
 
                     membres = membres.concat(Object.values(mapPendingIdties));
@@ -401,12 +447,18 @@ const stack = duniter.statics.autoStack([{
               <script type="text/javascript">
               
                 function onLoadedPage() {
-                  var to = querySt("to");
+                  var to = decodeURIComponent(querySt("to") || '');
                   var pending = querySt("pending") == 'on' ? 'checked' : '';
                   var mode = querySt("mode");
                   
                   document.getElementById('to').value = to || '';
-                  document.getElementById('pending').checked = pending;
+                  if (window.location.search) {
+                    document.getElementById('pending').checked = pending;
+                  } else {
+                    // Default checked
+                    document.getElementById('pending').checked = 'checked';
+                  }
+                  
                   if (mode == "u2w") {
                     document.getElementById('modeu2w').checked = 'checked';
                   } else {
@@ -445,7 +497,7 @@ const stack = duniter.statics.autoStack([{
                   <label for="to">Test UID:</label>
                   <input type="text" name="to" id="to">
                   <br>
-                  <input type="checkbox" name="pending" id="pending">
+                  <input type="checkbox" name="pending" id="pending" checked="checked">
                   <label for="pending">Include sandbox's data</label>
                   <br>
                   <input type="radio" name="mode" id="modew2u" value="w2u" checked="checked">See the distance of User from WoT's point of view</div>
