@@ -103,282 +103,22 @@ const stack = duniter.statics.autoStack([{
                 `;
               } else {
 
-                if (req.query.mode == "u2w") {
+                let membres = yield prepareMembresInitiaux(wotb, dSen, sentries, dicoIdentites, duniterServer);
 
-                  // Ajout des membres non-sentries
-                  const pointsNormaux = wotb.getNonSentries(dSen);
-                  const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
-                    const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
-                    identite.statusClass = 'isMember';
-                    dicoIdentites[identite.wotb_id] = identite;
-                    return identite;
-                  }));
+                const res = yield prepareMembres(req, wotb, duniterServer, membres, idty, dicoIdentites);
+                membres = res.membres;
+                idty = res.idty;
+                const mapPendingCerts = res.mapPendingCerts;
 
-                  let membres = sentries.concat(nonSentries);
-
-                  const mapPendingCerts = {};
-                  const mapPendingIdties = {};
-                  const mapSiblings = {};
-                  if (req.query.pending) {
-                    // Recherche les identités en attente
-                    const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
-                    for (const theIdty of pendingIdties) {
-                      // Add it to the temp wot
-                      theIdty.wotb_id = wotb.addNode();
-                      theIdty.statusClass = 'isPending';
-                      theIdty.pub = theIdty.pubkey;
-                      const siblings = _.where(pendingIdties, { uid: theIdty.uid });
-                      if (siblings.length > 1 || mapSiblings[theIdty.uid] !== undefined) {
-                        const initialUID = theIdty.uid;
-                        mapSiblings[initialUID] = (mapSiblings[initialUID] || 0);
-                        theIdty.uid += "[" + mapSiblings[initialUID] + "]";
-                        if (theIdty.uid == req.query.to) {
-                          idty = theIdty;
-                        }
-                        mapSiblings[initialUID]++;
-                      } else {
-                        if (theIdty.uid == req.query.to) {
-                          idty = theIdty;
-                        }
-                      }
-                      dicoIdentites[theIdty.wotb_id] = theIdty;
-                      mapPendingIdties[theIdty.wotb_id] = theIdty;
-                    }
-
-                    membres = membres.concat(Object.values(mapPendingIdties));
-
-                    // Recherche les certifications en attente
-                    const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
-                    for (const cert of pendingCerts) {
-                      const from = _.findWhere(membres, { pub: cert.from });
-                      const target = _.findWhere(membres, { hash: cert.target });
-                      if (target && from) {
-                        wotb.addLink(from.wotb_id, target.wotb_id);
-                        mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
-                      }
-                    }
+                let lignes = [];
+                for (const membre of membres) {
+                  if (req.query.mode == "u2w") {
+                    alimenteLignes(wotb, idty, membre, lignes, dicoIdentites, mapPendingCerts);
+                  } else {
+                    alimenteLignes(wotb, membre, idty, lignes, dicoIdentites, mapPendingCerts);
                   }
-
-                  let lignes = [];
-                  for (const membre of membres) {
-                    const plusCourtsCheminsPossibles = wotb.getPaths(idty.wotb_id, membre.wotb_id, MAX_STEP_LOOK);
-                    if (plusCourtsCheminsPossibles.length) {
-                      const ligne = traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites);
-                      for (let i = 0; i < ligne.length - 1; i++) {
-                        const from_wid = ligne[i].wotb_id;
-                        const to_wid = ligne[i + 1].wotb_id;
-                        const lien = [from_wid, to_wid].join('-');
-                        if (mapPendingCerts[lien]) {
-                          ligne[i + 1].pendingCert = true;
-                        }
-                      }
-                      lignes.push(ligne);
-                    } else {
-                      const identiteObservee = dicoIdentites[idty.wotb_id];
-                      if (identiteObservee.uid != membre.uid) {
-                        lignes.push([identiteObservee,
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          membre]);
-                      }
-                    }
-                  }
-
-                  lignes.sort((ligneA, ligneB) => {
-                    if (ligneA.length > ligneB.length) return -1;
-                    if (ligneB.length > ligneA.length) return 1;
-                    if ((ligneA[1] && ligneA[1] == '?') && (!ligneB[1] || ligneB[1] != '?')) {
-                      return 1;
-                    }
-                    if ((ligneB[1] && ligneB[1] == '?') && (!ligneA[1] || ligneA[1] != '?')) {
-                      return -1;
-                    }
-                    return 0;
-                  });
-                  lignes.reverse();
-
-                  const chemins = lignes.map((colonnes) => {
-                    return `
-                      <tr>
-                        <td class="${ colonnes[0] && colonnes[0].statusClass }"><a href="./?to=${ (colonnes[0] && colonnes[0].uid) || ''}">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
-                        <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[1] && colonnes[1].statusClass }"><a href="./?to=${ (colonnes[1] && colonnes[1].uid) || ''}">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
-                        <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[2] && colonnes[2].statusClass }"><a href="./?to=${ (colonnes[2] && colonnes[2].uid) || ''}">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
-                        <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[3] && colonnes[3].statusClass }"><a href="./?to=${ (colonnes[3] && colonnes[3].uid) || ''}">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
-                        <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[4] && colonnes[4].statusClass }"><a href="./?to=${ (colonnes[4] && colonnes[4].uid) || ''}">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
-                        <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
-                        <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[6] && colonnes[6].statusClass }"><a href="./?to=${ (colonnes[6] && colonnes[6].uid) || ''}">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
-                      </tr>
-                    `;
-                  }).join('');
-
-                  searchResult = `
-                    <table>
-                      <tr>
-                        <th>Step 0</th>
-                        <th class="arrow">-></th>
-                        <th>Step 1</th>
-                        <th class="arrow">-></th>
-                        <th>Step 2</th>
-                        <th class="arrow">-></th>
-                        <th>Step 3 (MAX)</th>
-                        <th class="arrow">-></th>
-                        <th>Step 4</th>
-                        <th class="arrow">-></th>
-                        <th>Step 5</th>
-                        <th class="arrow">-></th>
-                        <th>Infinity</th>
-                      </tr>
-                      ${chemins}
-                    </table>
-                  `;
-
-                } else {
-
-                  // Ajout des membres non-sentries
-                  const pointsNormaux = wotb.getNonSentries(dSen);
-                  const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
-                    const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
-                    identite.statusClass = 'isMember';
-                    dicoIdentites[identite.wotb_id] = identite;
-                    return identite;
-                  }));
-
-                  let membres = sentries.concat(nonSentries);
-
-                  const mapPendingCerts = {};
-                  const mapPendingIdties = {};
-                  const mapSiblings = {};
-                  if (req.query.pending) {
-                    // Recherche les identités en attente
-                    const pendingIdties =  yield duniterServer.dal.idtyDAL.sqlListAll();
-                    for (const theIdty of pendingIdties) {
-                      // Add it to the temp wot
-                      theIdty.wotb_id = wotb.addNode();
-                      theIdty.statusClass = 'isPending';
-                      theIdty.pub = theIdty.pubkey;
-                      const siblings = _.where(pendingIdties, { uid: theIdty.uid });
-                      if (siblings.length > 1 || mapSiblings[theIdty.uid] !== undefined) {
-                        const initialUID = theIdty.uid;
-                        mapSiblings[initialUID] = (mapSiblings[initialUID] || 0);
-                        theIdty.uid += "[" + mapSiblings[initialUID] + "]";
-                        if (theIdty.uid == req.query.to) {
-                          idty = theIdty;
-                        }
-                        mapSiblings[initialUID]++;
-                      } else {
-                        if (theIdty.uid == req.query.to) {
-                          idty = theIdty;
-                        }
-                      }
-                      dicoIdentites[theIdty.wotb_id] = theIdty;
-                      mapPendingIdties[theIdty.wotb_id] = theIdty;
-                    }
-
-                    membres = membres.concat(Object.values(mapPendingIdties));
-
-                    // Recherche les certifications en attente
-                    const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
-                    for (const cert of pendingCerts) {
-                      const from = _.findWhere(membres, { pub: cert.from });
-                      const target = _.findWhere(membres, { hash: cert.target });
-                      if (target && from) {
-                        wotb.addLink(from.wotb_id, target.wotb_id);
-                        mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
-                      }
-                    }
-                  }
-
-                  let lignes = [];
-                  for (const membre of membres) {
-                    const plusCourtsCheminsPossibles = wotb.getPaths(membre.wotb_id, idty.wotb_id, MAX_STEP_LOOK);
-                    if (plusCourtsCheminsPossibles.length) {
-                      const ligne = traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites, mapPendingCerts);
-                      for (let i = 0; i < ligne.length - 1; i++) {
-                        const from_wid = ligne[i].wotb_id;
-                        const to_wid = ligne[i + 1].wotb_id;
-                        const lien = [from_wid, to_wid].join('-');
-                        if (mapPendingCerts[lien]) {
-                          ligne[i + 1].pendingCert = true;
-                        }
-                      }
-                      lignes.push(ligne);
-                    } else {
-                      const identiteObservee = dicoIdentites[idty.wotb_id];
-                      if (identiteObservee.uid != membre.uid) {
-                        lignes.push([membre,
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          { uid: '?', statusClass: 'isPending', pendingCert: true },
-                          identiteObservee]);
-                      }
-                    }
-                  }
-
-                  lignes.sort((ligneA, ligneB) => {
-                    if (ligneA.length > ligneB.length) return -1;
-                    if (ligneB.length > ligneA.length) return 1;
-                    if ((ligneA[1] && ligneA[1] == '?') && (!ligneB[1] || ligneB[1] != '?')) {
-                      return 1;
-                    }
-                    if ((ligneB[1] && ligneB[1] == '?') && (!ligneA[1] || ligneA[1] != '?')) {
-                      return -1;
-                    }
-                    return 0;
-                  });
-                  lignes.reverse();
-
-                  const chemins = lignes.map((colonnes) => {
-                    return `
-                      <tr>
-                        <td class="${ colonnes[0] && colonnes[0].statusClass }"><a href="./?to=${ (colonnes[0] && colonnes[0].uid) || ''}">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
-                        <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[1] && colonnes[1].statusClass }"><a href="./?to=${ (colonnes[1] && colonnes[1].uid) || ''}">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
-                        <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[2] && colonnes[2].statusClass }"><a href="./?to=${ (colonnes[2] && colonnes[2].uid) || ''}">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
-                        <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[3] && colonnes[3].statusClass }"><a href="./?to=${ (colonnes[3] && colonnes[3].uid) || ''}">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
-                        <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[4] && colonnes[4].statusClass }"><a href="./?to=${ (colonnes[4] && colonnes[4].uid) || ''}">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
-                        <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
-                        <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
-                        <td class="${ colonnes[6] && colonnes[6].statusClass }"><a href="./?to=${ (colonnes[6] && colonnes[6].uid) || ''}">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
-                      </tr>
-                    `;
-                  }).join('');
-
-                  searchResult = `
-                    <table>
-                      <tr>
-                        <th>Step 0</th>
-                        <th class="arrow">-></th>
-                        <th>Step 1</th>
-                        <th class="arrow">-></th>
-                        <th>Step 2</th>
-                        <th class="arrow">-></th>
-                        <th>Step 3 (MAX)</th>
-                        <th class="arrow">-></th>
-                        <th>Step 4</th>
-                        <th class="arrow">-></th>
-                        <th>Step 5</th>
-                        <th class="arrow">-></th>
-                        <th>Infinity</th>
-                      </tr>
-                      ${chemins}
-                    </table>
-                  `;
                 }
+                searchResult = genereHTMLdeRecherche(lignes);
               }
             }
 
@@ -574,3 +314,149 @@ co(function*() {
   // End
   process.exit();
 });
+
+function prepareMembresInitiaux(wotb, dSen, sentries, dicoIdentites, duniterServer) {
+  return co(function*() {
+    // Ajout des membres non-sentries
+    const pointsNormaux = wotb.getNonSentries(dSen);
+    const nonSentries = yield pointsNormaux.map((wotb_id) => co(function*() {
+      const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+      identite.statusClass = 'isMember';
+      dicoIdentites[identite.wotb_id] = identite;
+      return identite;
+    }));
+
+    return sentries.concat(nonSentries);
+  });
+}
+
+function prepareMembres(req, wotb, duniterServer, membres, idty, dicoIdentites) {
+  return co(function*() {
+    const mapPendingCerts = {};
+    const mapPendingIdties = {};
+    const mapSiblings = {};
+    if (req.query.pending) {
+      // Recherche les identités en attente
+      const pendingIdties = yield duniterServer.dal.idtyDAL.sqlListAll();
+      for (const theIdty of pendingIdties) {
+        // Add it to the temp wot
+        theIdty.wotb_id = wotb.addNode();
+        theIdty.statusClass = 'isPending';
+        theIdty.pub = theIdty.pubkey;
+        const siblings = _.where(pendingIdties, { uid: theIdty.uid });
+        if (siblings.length > 1 || mapSiblings[theIdty.uid] !== undefined) {
+          const initialUID = theIdty.uid;
+          mapSiblings[initialUID] = (mapSiblings[initialUID] || 0);
+          theIdty.uid += "[" + mapSiblings[initialUID] + "]";
+          if (theIdty.uid == req.query.to) {
+            idty = theIdty;
+          }
+          mapSiblings[initialUID]++;
+        } else {
+          if (theIdty.uid == req.query.to) {
+            idty = theIdty;
+          }
+        }
+        dicoIdentites[theIdty.wotb_id] = theIdty;
+        mapPendingIdties[theIdty.wotb_id] = theIdty;
+      }
+
+      membres = membres.concat(Object.values(mapPendingIdties));
+
+      // Recherche les certifications en attente
+      const pendingCerts = yield duniterServer.dal.certDAL.sqlListAll();
+      for (const cert of pendingCerts) {
+        const from = _.findWhere(membres, { pub: cert.from });
+        const target = _.findWhere(membres, { hash: cert.target });
+        if (target && from) {
+          wotb.addLink(from.wotb_id, target.wotb_id);
+          mapPendingCerts[[from.wotb_id, target.wotb_id].join('-')] = true;
+        }
+      }
+
+      return { idty, membres, mapPendingCerts };
+    }
+  });
+}
+
+function alimenteLignes(wotb, source, cible, lignes, dicoIdentites, mapPendingCerts) {
+  const plusCourtsCheminsPossibles = wotb.getPaths(source.wotb_id, cible.wotb_id, MAX_STEP_LOOK);
+  if (plusCourtsCheminsPossibles.length) {
+    const ligne = traduitCheminEnIdentites(plusCourtsCheminsPossibles, dicoIdentites);
+    for (let i = 0; i < ligne.length - 1; i++) {
+      const from_wid = ligne[i].wotb_id;
+      const to_wid = ligne[i + 1].wotb_id;
+      const lien = [from_wid, to_wid].join('-');
+      if (mapPendingCerts[lien]) {
+        ligne[i + 1].pendingCert = true;
+      }
+    }
+    lignes.push(ligne);
+  } else {
+    const identiteObservee = dicoIdentites[source.wotb_id];
+    if (identiteObservee.uid != cible.uid) {
+      lignes.push([identiteObservee,
+        { uid: '?', statusClass: 'isPending', pendingCert: true },
+        { uid: '?', statusClass: 'isPending', pendingCert: true },
+        { uid: '?', statusClass: 'isPending', pendingCert: true },
+        { uid: '?', statusClass: 'isPending', pendingCert: true },
+        { uid: '?', statusClass: 'isPending', pendingCert: true },
+        cible]);
+    }
+  }
+}
+
+function genereHTMLdeRecherche(lignes) {
+  lignes.sort((ligneA, ligneB) => {
+    if (ligneA.length > ligneB.length) return -1;
+    if (ligneB.length > ligneA.length) return 1;
+    if ((ligneA[1] && ligneA[1] == '?') && (!ligneB[1] || ligneB[1] != '?')) {
+      return 1;
+    }
+    if ((ligneB[1] && ligneB[1] == '?') && (!ligneA[1] || ligneA[1] != '?')) {
+      return -1;
+    }
+    return 0;
+  });
+  lignes.reverse();
+  const chemins = lignes.map((colonnes) => {
+  return `
+    <tr>
+      <td class="${ colonnes[0] && colonnes[0].statusClass }"><a href="./?to=${ (colonnes[0] && colonnes[0].uid) || ''}">${ (colonnes[0] && colonnes[0].uid) || ''}</td>
+      <td class="${ colonnes[1] && colonnes[1].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[1] && colonnes[1].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[1] && colonnes[1].statusClass }"><a href="./?to=${ (colonnes[1] && colonnes[1].uid) || ''}">${ (colonnes[1] && colonnes[1].uid) || ''}</td>
+      <td class="${ colonnes[2] && colonnes[2].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[2] && colonnes[2].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[2] && colonnes[2].statusClass }"><a href="./?to=${ (colonnes[2] && colonnes[2].uid) || ''}">${ (colonnes[2] && colonnes[2].uid) || ''}</td>
+      <td class="${ colonnes[3] && colonnes[3].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[3] && colonnes[3].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[3] && colonnes[3].statusClass }"><a href="./?to=${ (colonnes[3] && colonnes[3].uid) || ''}">${ (colonnes[3] && colonnes[3].uid) || ''}</td>
+      <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[4] && colonnes[4].statusClass }"><a href="./?to=${ (colonnes[4] && colonnes[4].uid) || ''}">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
+      <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+      <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[6] && colonnes[6].statusClass }"><a href="./?to=${ (colonnes[6] && colonnes[6].uid) || ''}">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
+    </tr>
+  `;
+}).join('');
+
+  return `
+    <table>
+      <tr>
+        <th>Step 0</th>
+        <th class="arrow">-></th>
+        <th>Step 1</th>
+        <th class="arrow">-></th>
+        <th>Step 2</th>
+        <th class="arrow">-></th>
+        <th>Step 3 (MAX)</th>
+        <th class="arrow">-></th>
+        <th>Step 4</th>
+        <th class="arrow">-></th>
+        <th>Step 5</th>
+        <th class="arrow">-></th>
+        <th>Infinity</th>
+      </tr>
+      ${chemins}
+    </table>
+  `;
+}
