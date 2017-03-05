@@ -161,6 +161,10 @@ const stack = duniter.statics.autoStack([{
                   text-decoration: none;
                   color: black !important;
                 }
+                .isNonMember, .isNonMember a {
+                  text-decoration: none;
+                  color: red !important;
+                }
                 .isPendingCert, .isPendingCert a {
                   text-decoration: none;
                   color: orange;
@@ -174,6 +178,10 @@ const stack = duniter.statics.autoStack([{
                 .isMember, .isMember a:visited {
                   text-decoration: none;
                   color: black !important;
+                }
+                .isNonMember, .isNonMember a:visited {
+                  text-decoration: none;
+                  color: red !important;
                 }
                 .isPendingCert, .isPendingCert a:visited {
                   text-decoration: none;
@@ -338,8 +346,15 @@ function prepareMembresInitiaux(wotb, dSen, sentries, dicoIdentites, duniterServ
       dicoIdentites[identite.wotb_id] = identite;
       return identite;
     }));
+    const nonMembres = wotb.getDisabled();
+    const disabled = yield nonMembres.map((wotb_id) => co(function*() {
+      const identite = (yield duniterServer.dal.idtyDAL.query('SELECT * FROM i_index WHERE wotb_id = ?', [wotb_id]))[0];
+      identite.statusClass = 'isNonMember';
+      dicoIdentites[identite.wotb_id] = identite;
+      return identite;
+    }));
 
-    return sentries.concat(nonSentries);
+    return sentries.concat(nonSentries).concat(disabled);
   });
 }
 
