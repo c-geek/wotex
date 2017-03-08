@@ -19,7 +19,7 @@ const DEFAULT_HOST = 'localhost';
 // Default port on which WoT UI is available
 const DEFAULT_PORT = 8558;
 
-const MAX_STEP_LOOK = 5;
+const MAX_STEP_LOOK = 7;
 
 /****************************************
  * SPECIALIZATION
@@ -143,6 +143,9 @@ const stack = duniter.statics.autoStack([{
                 }
                 .arrow {
                   width: 50px;
+                }
+                .isMax {
+                  border-right: 1px dashed gray;
                 }
                 .isSentry, .isSentry a {
                   text-decoration: none;
@@ -289,7 +292,7 @@ const stack = duniter.statics.autoStack([{
         httpServer.listen(SERVER_PORT, SERVER_HOST);
         console.log("Serveur web disponible a l'adresse http://%s:%s", SERVER_HOST, SERVER_PORT);
 
-        yield startServices();
+        // yield startServices();
         /****************************************/
 
           // Wait forever, WoT is a permanent program
@@ -460,9 +463,13 @@ function genereHTMLdeRecherche(lignes) {
       <td class="${ colonnes[4] && colonnes[4].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[4] && colonnes[4].uid) ? '->' : ''}</td>
       <td class="${ colonnes[4] && colonnes[4].statusClass }"><a href="./?to=${ (colonnes[4] && colonnes[4].uid) || ''}">${ (colonnes[4] && colonnes[4].uid) || ''}</td>
       <td class="${ colonnes[5] && colonnes[5].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[5] && colonnes[5].uid) ? '->' : ''}</td>
-      <td class="${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
+      <td class="isMax ${ colonnes[5] && colonnes[5].statusClass }"><a href="./?to=${ (colonnes[5] && colonnes[5].uid) || ''}">${ (colonnes[5] && colonnes[5].uid) || ''}</td>
       <td class="${ colonnes[6] && colonnes[6].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[6] && colonnes[6].uid) ? '->' : ''}</td>
       <td class="${ colonnes[6] && colonnes[6].statusClass }"><a href="./?to=${ (colonnes[6] && colonnes[6].uid) || ''}">${ (colonnes[6] && colonnes[6].uid) || ''}</td>
+      <td class="${ colonnes[7] && colonnes[7].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[7] && colonnes[7].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[7] && colonnes[7].statusClass }"><a href="./?to=${ (colonnes[7] && colonnes[7].uid) || ''}">${ (colonnes[7] && colonnes[7].uid) || ''}</td>
+      <td class="${ colonnes[8] && colonnes[8].pendingCert ? 'isPendingCert' : '' }">${ (colonnes[8] && colonnes[8].uid) ? '->' : ''}</td>
+      <td class="${ colonnes[8] && colonnes[8].statusClass }"><a href="./?to=${ (colonnes[8] && colonnes[8].uid) || ''}">${ (colonnes[8] && colonnes[8].uid) || ''}</td>
     </tr>
   `;
 }).join('');
@@ -476,11 +483,15 @@ function genereHTMLdeRecherche(lignes) {
         <th class="arrow">-></th>
         <th>Step 2</th>
         <th class="arrow">-></th>
-        <th>Step 3 (MAX)</th>
+        <th>Step 3</th>
         <th class="arrow">-></th>
         <th>Step 4</th>
         <th class="arrow">-></th>
-        <th>Step 5</th>
+        <th class="isMax">Step 5 (MAX)</th>
+        <th class="arrow">-></th>
+        <th>Step 6</th>
+        <th class="arrow">-></th>
+        <th>Step 7</th>
         <th class="arrow">-></th>
         <th>Infinity</th>
       </tr>
