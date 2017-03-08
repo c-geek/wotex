@@ -34,8 +34,8 @@ adm-zip@0.4.7:
   resolved "https://registry.yarnpkg.com/adm-zip/-/adm-zip-0.4.7.tgz#8606c2cbf1c426ce8c8ec00174447fd49b6eafc1"
 
 ajv@^4.9.1:
-  version "4.11.3"
-  resolved "https://registry.yarnpkg.com/ajv/-/ajv-4.11.3.tgz#ce30bdb90d1254f762c75af915fb3a63e7183d22"
+  version "4.11.4"
+  resolved "https://registry.yarnpkg.com/ajv/-/ajv-4.11.4.tgz#ebf3a55d4b132ea60ff5847ae85d2ef069960b45"
   dependencies:
     co "^4.6.0"
     json-stable-stringify "^1.0.1"
@@ -892,6 +892,29 @@ duniter-bma@^0.2.11, duniter-bma@^0.2.4:
     underscore "1.8.3"
     ws "1.1.1"
 
+duniter-bma@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/duniter-bma/-/duniter-bma-1.0.0.tgz#89c91f50a885bb6a14d0e66c872c5cbf74b0e6f5"
+  dependencies:
+    async "2.1.4"
+    body-parser "1.15.2"
+    co "4.6.0"
+    cors "2.8.1"
+    ddos "0.1.16"
+    errorhandler "1.4.3"
+    event-stream "3.3.4"
+    express "4.14.0"
+    express-cors "0.0.3"
+    express-fileupload "0.0.5"
+    inquirer "0.8.5"
+    morgan "1.7.0"
+    nnupnp "1.0.2"
+    q "1.4.1"
+    request "2.75.0"
+    request-promise "4.1.1"
+    underscore "1.8.3"
+    ws "1.1.1"
+
 duniter-common@0.1.0, duniter-common@^0.1.0:
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/duniter-common/-/duniter-common-0.1.0.tgz#f5cbdc301ba8e57fcc1ab39521ac8f621e3df691"
@@ -901,15 +924,42 @@ duniter-common@0.1.0, duniter-common@^0.1.0:
     node-pre-gyp "0.6.32"
     tweetnacl "0.14.3"
 
-duniter-crawler@^0.2.1, duniter-crawler@^0.2.14, duniter-crawler@^0.2.15, duniter-crawler@^0.2.4:
-  version "0.2.15"
-  resolved "https://registry.yarnpkg.com/duniter-crawler/-/duniter-crawler-0.2.15.tgz#14f53103391ed8d8fa28cd9e4589ec8b684c33e9"
+duniter-common@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/duniter-common/-/duniter-common-1.0.0.tgz#d11b8cb9296e2d29943f2969b1c9291fec8d4d3d"
+  dependencies:
+    co "4.6.0"
+    naclb "1.3.7"
+    node-pre-gyp "0.6.32"
+    tweetnacl "0.14.3"
+
+duniter-crawler@^0.2.1, duniter-crawler@^0.2.14, duniter-crawler@^0.2.4:
+  version "0.2.16"
+  resolved "https://registry.yarnpkg.com/duniter-crawler/-/duniter-crawler-0.2.16.tgz#251feb66343abbe657394193279daed45a57f658"
   dependencies:
     async "2.1.4"
     co "4.6.0"
     duniter "^0.90.5"
     duniter-bma "^0.2.4"
     duniter-common "^0.1.0"
+    inquirer "2.0.0"
+    moment "2.17.1"
+    multimeter "0.1.1"
+    q "1.4.1"
+    querablep "0.1.0"
+    request "2.75.0"
+    request-promise "4.1.1"
+    underscore "1.8.3"
+
+duniter-crawler@^1.0.0, duniter-crawler@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/duniter-crawler/-/duniter-crawler-1.0.1.tgz#3dfbb34e00d148b395770533177f2628a4f5394c"
+  dependencies:
+    async "2.1.4"
+    co "4.6.0"
+    duniter "^0.90.5"
+    duniter-bma "^1.0.0"
+    duniter-common "^1.0.0"
     inquirer "2.0.0"
     moment "2.17.1"
     multimeter "0.1.1"
@@ -946,7 +996,21 @@ duniter-keypair@^0.3.0:
     tweetnacl "0.14.3"
     tweetnacl-util "0.13.5"
 
-duniter-prover@^0.2.7, duniter-prover@^0.2.9:
+duniter-keypair@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/duniter-keypair/-/duniter-keypair-1.0.0.tgz#95ef76217100e7aabeb31c4554d0d75ffad56f84"
+  dependencies:
+    bs58 "4.0.0"
+    co "4.6.0"
+    inquirer "^2.0.0"
+    js-yaml "3.7.0"
+    node-pre-gyp "0.6.32"
+    q "1.4.1"
+    scryptb "6.0.4"
+    tweetnacl "0.14.3"
+    tweetnacl-util "0.13.5"
+
+duniter-prover@^0.2.7:
   version "0.2.9"
   resolved "https://registry.yarnpkg.com/duniter-prover/-/duniter-prover-0.2.9.tgz#1ca3984164045c252d2a34c128cb196943c54c4c"
   dependencies:
@@ -964,9 +1028,53 @@ duniter-prover@^0.2.7, duniter-prover@^0.2.9:
     request-promise "4.1.1"
     underscore "1.8.3"
 
-duniter-ui@^0.3.5, duniter-ui@^0.3.7:
+duniter-prover@^1.0.0:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/duniter-prover/-/duniter-prover-1.0.1.tgz#5d024ef8cbbaf848eaf4d3b3e99be943e912734c"
+  dependencies:
+    async "2.1.4"
+    co "4.6.0"
+    duniter-common "^1.0.0"
+    duniter-crawler "^1.0.1"
+    inquirer "0.8.5"
+    moment "2.17.1"
+    multimeter "0.1.1"
+    node-uuid "1.4.7"
+    q "1.4.1"
+    querablep "0.1.0"
+    request "2.75.0"
+    request-promise "4.1.1"
+    underscore "1.8.3"
+
+duniter-ui@^0.3.5:
   version "0.3.7"
   resolved "https://registry.yarnpkg.com/duniter-ui/-/duniter-ui-0.3.7.tgz#d6591b981042cb02d728863bd732c27b48eba7de"
+  dependencies:
+    adm-zip "0.4.7"
+    body-parser "1.15.2"
+    bower "1.8.0"
+    brunch "2.4.2"
+    co "4.6.0"
+    cors "2.8.1"
+    duniter-crawler "^0.2.1"
+    duniter-keypair "^0.2.0"
+    event-stream "3.3.4"
+    express "4.14.0"
+    express-fileupload "0.0.5"
+    fs-extra "1.0.0"
+    materialize-css "0.97.5"
+    moment "2.6.0"
+    node-pre-gyp "0.6.32"
+    q "1.4.1"
+    request "2.31.0"
+    request-promise "4.1.1"
+    rimraf "2.5.4"
+    tmp "0.0.29"
+    underscore "1.8.3"
+
+duniter-ui@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/duniter-ui/-/duniter-ui-1.0.1.tgz#00b0b44ad4c829397e810c4b042045de832d647a"
   dependencies:
     adm-zip "0.4.7"
     body-parser "1.15.2"
@@ -1028,9 +1136,9 @@ duniter@^0.90.5:
     winston "2.2.0"
     wotb "0.5.1"
 
-duniter@^0.91.0:
-  version "0.91.0"
-  resolved "https://registry.yarnpkg.com/duniter/-/duniter-0.91.0.tgz#1d1902a25c8c56cc3868a022f169b53f3e167c7c"
+duniter@^1.0.0:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/duniter/-/duniter-1.0.1.tgz#18ffc71be56df98f8f2ffb934f055d33fd8d1ea5"
   dependencies:
     archiver "1.0.1"
     async "1.5.2"
@@ -1039,12 +1147,12 @@ duniter@^0.91.0:
     colors "1.1.2"
     commander "2.9.0"
     daemonize2 "0.4.2"
-    duniter-bma "^0.2.11"
-    duniter-common "0.1.0"
-    duniter-crawler "^0.2.15"
-    duniter-keypair "^0.3.0"
-    duniter-prover "^0.2.9"
-    duniter-ui "^0.3.7"
+    duniter-bma "^1.0.0"
+    duniter-common "^1.0.0"
+    duniter-crawler "^1.0.0"
+    duniter-keypair "^1.0.0"
+    duniter-prover "^1.0.0"
+    duniter-ui "^1.0.1"
     event-stream "3.3.4"
     inquirer "0.8.5"
     jison "0.4.17"
@@ -1064,7 +1172,7 @@ duniter@^0.91.0:
     unzip "0.1.11"
     unzip2 "0.2.5"
     winston "2.2.0"
-    wotb "0.5.1"
+    wotb "0.5.3"
 
 duplexer@~0.1.1:
   version "0.1.1"
@@ -1249,8 +1357,8 @@ express@4.14.0:
     vary "~1.1.0"
 
 express@^4.0.0, express@^4.14.1:
-  version "4.15.0"
-  resolved "https://registry.yarnpkg.com/express/-/express-4.15.0.tgz#8fb125829f70a04a59e1c40ceb8dea19cf5c879c"
+  version "4.15.2"
+  resolved "https://registry.yarnpkg.com/express/-/express-4.15.2.tgz#af107fc148504457f2dca9a6f2571d7129b97b35"
   dependencies:
     accepts "~1.3.3"
     array-flatten "1.1.1"
@@ -1271,10 +1379,10 @@ express@^4.0.0, express@^4.14.1:
     parseurl "~1.3.1"
     path-to-regexp "0.1.7"
     proxy-addr "~1.1.3"
-    qs "6.3.1"
+    qs "6.4.0"
     range-parser "~1.2.0"
-    send "0.15.0"
-    serve-static "1.12.0"
+    send "0.15.1"
+    serve-static "1.12.1"
     setprototypeof "1.0.3"
     statuses "~1.3.1"
     type-is "~1.6.14"
@@ -1475,8 +1583,8 @@ fstream-ignore@~1.0.5:
     rimraf "2"
 
 fstream@^1.0.0, fstream@^1.0.2, fstream@~1.0.10:
-  version "1.0.10"
-  resolved "https://registry.yarnpkg.com/fstream/-/fstream-1.0.10.tgz#604e8a92fe26ffd9f6fae30399d4984e1ab22822"
+  version "1.0.11"
+  resolved "https://registry.yarnpkg.com/fstream/-/fstream-1.0.11.tgz#5c1fb1f117477114f0632a0eb4b71b3cb0fd3171"
   dependencies:
     graceful-fs "^4.1.2"
     inherits "~2.0.0"
@@ -1603,8 +1711,8 @@ har-validator@~2.0.6:
     pinkie-promise "^2.0.0"
 
 har-validator@~4.2.0:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/har-validator/-/har-validator-4.2.0.tgz#c2efa9f6c50fee92ef033cf30b796a2c5b660cd7"
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/har-validator/-/har-validator-4.2.1.tgz#33481d0f1bbff600dd203d75812a6a5fba002e2a"
   dependencies:
     ajv "^4.9.1"
     har-schema "^1.0.5"
@@ -1736,13 +1844,13 @@ inflight@^1.0.4:
     once "^1.3.0"
     wrappy "1"
 
-inherits@2, inherits@2.0.1:
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.1.tgz#b17d08d326b4423e568eff719f91b0b1cbdf69f1"
-
-inherits@2.0.3, inherits@^2.0.1, inherits@^2.0.3, inherits@~2.0.0, inherits@~2.0.1:
+inherits@2, inherits@2.0.3, inherits@^2.0.1, inherits@^2.0.3, inherits@~2.0.0, inherits@~2.0.1:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.3.tgz#633c2c83e3da42a502f52466022480f4208261de"
+
+inherits@2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.1.tgz#b17d08d326b4423e568eff719f91b0b1cbdf69f1"
 
 ini@~1.3.0:
   version "1.3.4"
@@ -2559,9 +2667,9 @@ qs@6.2.0:
   version "6.2.0"
   resolved "https://registry.yarnpkg.com/qs/-/qs-6.2.0.tgz#3b7848c03c2dece69a9522b0fae8c4126d745f3b"
 
-qs@6.3.1, qs@^6.1.0, qs@~6.3.0:
-  version "6.3.1"
-  resolved "https://registry.yarnpkg.com/qs/-/qs-6.3.1.tgz#918c0b3bcd36679772baf135b1acb4c1651ed79d"
+qs@6.4.0, qs@^6.1.0:
+  version "6.4.0"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.4.0.tgz#13e26d28ad6b0ffaa91312cd3bf708ed351e7233"
 
 qs@^1.2.1:
   version "1.2.2"
@@ -2572,8 +2680,12 @@ qs@~0.6.0:
   resolved "https://registry.yarnpkg.com/qs/-/qs-0.6.6.tgz#6e015098ff51968b8a3c819001d5f2c89bc4b107"
 
 qs@~6.2.0:
-  version "6.2.2"
-  resolved "https://registry.yarnpkg.com/qs/-/qs-6.2.2.tgz#d506a5ad5b2cae1fd35c4f54ec182e267e3ef586"
+  version "6.2.3"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.2.3.tgz#1cfcb25c10a9b2b483053ff39f5dfc9233908cfe"
+
+qs@~6.3.0:
+  version "6.3.2"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.3.2.tgz#e75bd5f6e268122a2a0e0bda630b2550c166502c"
 
 querablep@0.1.0, querablep@^0.1.0:
   version "0.1.0"
@@ -2918,9 +3030,9 @@ send@0.14.2:
     range-parser "~1.2.0"
     statuses "~1.3.1"
 
-send@0.15.0:
-  version "0.15.0"
-  resolved "https://registry.yarnpkg.com/send/-/send-0.15.0.tgz#f0185d6466fa76424b866f3d533e2d19dd0aaa39"
+send@0.15.1:
+  version "0.15.1"
+  resolved "https://registry.yarnpkg.com/send/-/send-0.15.1.tgz#8a02354c26e6f5cca700065f5f0cdeba90ec7b5f"
   dependencies:
     debug "2.6.1"
     depd "~1.1.0"
@@ -2936,14 +3048,14 @@ send@0.15.0:
     range-parser "~1.2.0"
     statuses "~1.3.1"
 
-serve-static@1.12.0, serve-static@^1.10.0:
-  version "1.12.0"
-  resolved "https://registry.yarnpkg.com/serve-static/-/serve-static-1.12.0.tgz#150eb8aa262c2dd1924e960373145446c069dad6"
+serve-static@1.12.1, serve-static@^1.10.0:
+  version "1.12.1"
+  resolved "https://registry.yarnpkg.com/serve-static/-/serve-static-1.12.1.tgz#7443a965e3ced647aceb5639fa06bf4d1bbe0039"
   dependencies:
     encodeurl "~1.0.1"
     escape-html "~1.0.3"
     parseurl "~1.3.1"
-    send "0.15.0"
+    send "0.15.1"
 
 serve-static@~1.11.1:
   version "1.11.2"
@@ -3397,6 +3509,14 @@ wordwrap@~0.0.2:
 wotb@0.5.1:
   version "0.5.1"
   resolved "https://registry.yarnpkg.com/wotb/-/wotb-0.5.1.tgz#35093a808613a9c9d7d8e678c5143e2fbd6c8551"
+  dependencies:
+    bindings "1.2.1"
+    nan "2.2.0"
+    node-pre-gyp "0.6.23"
+
+wotb@0.5.3:
+  version "0.5.3"
+  resolved "https://registry.yarnpkg.com/wotb/-/wotb-0.5.3.tgz#57e94271166bcbc6ce6f7cff83588c65cf07cf2b"
   dependencies:
     bindings "1.2.1"
     nan "2.2.0"
