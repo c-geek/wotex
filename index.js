@@ -292,7 +292,7 @@ const stack = duniter.statics.autoStack([{
         httpServer.listen(SERVER_PORT, SERVER_HOST);
         console.log("Serveur web disponible a l'adresse http://%s:%s", SERVER_HOST, SERVER_PORT);
 
-        // yield startServices();
+        yield startServices();
         /****************************************/
 
           // Wait forever, WoT is a permanent program
