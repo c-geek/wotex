@@ -60,7 +60,7 @@ const stack = duniter.statics.autoStack([{
 
           try {
             // Trouve les points de contrôle efficacement grâce au module C (nommé "wotb")
-            const wotb = duniterServer.dal.wotb.memcopy();
+            const wotb = duniterServer.dal.wotb.memCopy();
             wotb.setMaxCert(100);
             const head = yield duniterServer.dal.getCurrentBlockOrNull();
             const membersCount = head ? head.membersCount : 0;
