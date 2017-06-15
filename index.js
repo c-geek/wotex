@@ -51,7 +51,6 @@ const stack = duniter.statics.autoStack([{
          ***************************************/
 
         const app = express();
-        const constants = duniterServer.lib.constants;
 
         /**
          * Sur appel de l'URL /bloc_courant
@@ -64,12 +63,7 @@ const stack = duniter.statics.autoStack([{
             wotb.setMaxCert(100);
             const head = yield duniterServer.dal.getCurrentBlockOrNull();
             const membersCount = head ? head.membersCount : 0;
-            let dSen;
-            if (head.version <= 3) {
-              dSen = Math.ceil(constants.CONTRACT.DSEN_P * Math.exp(Math.log(membersCount) / duniterServer.conf.stepMax));
-            } else {
-              dSen = Math.ceil(Math.pow(membersCount, 1 / duniterServer.conf.stepMax));
-            }
+            let dSen = Math.ceil(Math.pow(membersCount, 1 / duniterServer.conf.stepMax));
             const dicoIdentites = {};
             const pointsDeControle = wotb.getSentries(dSen);
             const sentries = yield pointsDeControle.map((wotb_id) => co(function*() {
